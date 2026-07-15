@@ -155,7 +155,27 @@ classpy sync --check --puml docs/class.puml --src src
 | `classpy sync`       | Repaint the `.puml` stereotypes to match the code.                  |
 | `classpy sync --check` | Report + exit non-zero if stale (writes nothing). For CI.         |
 
-Shared options: `--puml PATH` (default `docs/class.puml`), `--src PATH` (default `src`).
+Shared options: `--puml PATH`, `--src PATH`. Resolution order for each is
+**CLI flag → `[tool.classpy]` in `pyproject.toml` → built-in default**
+(`docs/class.puml` / `src`).
+
+---
+
+## Per-project defaults (`pyproject.toml`)
+
+If your project doesn't use the `docs/class.puml` + `src` layout, set its defaults
+once in `pyproject.toml` instead of passing `--puml`/`--src` every time:
+
+```toml
+[tool.classpy]
+puml = "docs/architecture.puml"
+src  = "app"
+```
+
+`classpy` searches upward from the current directory for the nearest
+`pyproject.toml`. With the above, a bare `classpy status` / `classpy sync` uses
+those paths. An explicit `--puml` or `--src` on the command line still overrides
+the config, and if a key is omitted the built-in default applies.
 
 ---
 
