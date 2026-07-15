@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import typer
 
+from classpy.adapters.config.loader import ConfigLoader
 from classpy.domain.models import ImplementationStatus
 from classpy.services.sync_service import SyncReport, SyncService
 
 DEFAULT_PUML = "docs/class.puml"
 DEFAULT_SRC = "src"
+
+_PUML_HELP = (
+    "Path to the .puml diagram. "
+    f"Defaults to [tool.classpy] puml, then {DEFAULT_PUML}."
+)
+_SRC_HELP = f"Source root to scan. Defaults to [tool.classpy] src, then {DEFAULT_SRC}."
 
 _LABELS = {
     ImplementationStatus.IMPLEMENTED: ("impl", "green"),
@@ -17,29 +24,43 @@ _LABELS = {
     ImplementationStatus.EXTERNAL: ("ext ", "blue"),
 }
 
-_PUML_OPTION = typer.Option(DEFAULT_PUML, "--puml", help="Path to the .puml diagram.")
-_SRC_OPTION = typer.Option(DEFAULT_SRC, "--src", help="Source root to scan.")
+_PUML_OPTION = typer.Option(None, "--puml", help=_PUML_HELP)
+_SRC_OPTION = typer.Option(None, "--src", help=_SRC_HELP)
 
 
 class Cli:
     """Command handlers, kept in a class so they compose one service instance."""
 
-    def __init__(self, service: SyncService | None = None) -> None:
+    def __init__(
+        self,
+        service: SyncService | None = None,
+        config_loader: ConfigLoader | None = None,
+    ) -> None:
         self.service = service or SyncService()
+        self.config_loader = config_loader or ConfigLoader()
+
+    def _resolve(self, puml: str | None, src: str | None) -> tuple[str, str]:
+        """Apply precedence: CLI flag > pyproject [tool.classpy] > hardcoded default."""
+        config = self.config_loader.load()
+        return (
+            puml or config.puml or DEFAULT_PUML,
+            src or config.src or DEFAULT_SRC,
+        )
 
     def status(
         self,
-        puml: str = _PUML_OPTION,
-        src: str = _SRC_OPTION,
+        puml: str | None = _PUML_OPTION,
+        src: str | None = _SRC_OPTION,
     ) -> None:
         """Report each class's implementation status without changing anything."""
+        puml, src = self._resolve(puml, src)
         report = self.service.status(puml, src)
         _render(report, wrote=False)
 
     def sync(
         self,
-        puml: str = _PUML_OPTION,
-        src: str = _SRC_OPTION,
+        puml: str | None = _PUML_OPTION,
+        src: str | None = _SRC_OPTION,
         check: bool = typer.Option(
             False,
             "--check",
@@ -47,6 +68,7 @@ class Cli:
         ),
     ) -> None:
         """Repaint the diagram so each class's colour matches the code."""
+        puml, src = self._resolve(puml, src)
         if check:
             report = self.service.status(puml, src)
             _render(report, wrote=False)
