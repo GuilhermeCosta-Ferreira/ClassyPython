@@ -37,7 +37,7 @@ endlegend
 '=============================================================================='
 
 package "Service Layer" {
-    class SyncService <<planned>> {
+    class SyncService <<implemented>> {
         +parser
         +inspector
         +comparator
@@ -48,7 +48,7 @@ package "Service Layer" {
     }
 
 
-    class Cli <<planned>> {
+    class Cli <<implemented>> {
         +sync()
         +status()
     }
@@ -63,7 +63,7 @@ package "Service Layer" {
 package "Model Domain Layer" {
 
     package "Models" {
-        enum ImplementationStatus <<planned>> {
+        enum ImplementationStatus <<implemented>> {
             PLANNED
             PARTIAL
             IMPLEMENTED
@@ -71,20 +71,20 @@ package "Model Domain Layer" {
         }
 
 
-        enum MemberKind <<planned>> {
+        enum MemberKind <<implemented>> {
             ATTRIBUTE
             METHOD
         }
 
 
-        class UmlMember <<planned>> {
+        class UmlMember <<implemented>> {
             +name
             +kind
         }
         UmlMember ..> MemberKind
 
 
-        class UmlClass <<planned>> {
+        class UmlClass <<implemented>> {
             +name
             +package
             +stereotype
@@ -93,14 +93,14 @@ package "Model Domain Layer" {
         UmlClass ..> UmlMember
 
 
-        class CodeClass <<planned>> {
+        class CodeClass <<implemented>> {
             +name
             +module_path
             +attributes
             +methods
         }
 
-        class ClassComparison <<planned>> {
+        class ClassComparison <<implemented>> {
             +uml_class
             +status
             +missing_members
@@ -109,13 +109,13 @@ package "Model Domain Layer" {
 
     package "Analysis" {
 
-        class StatusComparator <<planned>> {
+        class StatusComparator <<implemented>> {
             +compare()
         }
         StatusComparator ..> ClassComparison
         StatusComparator ..> ImplementationStatus
 
-        class ClassLocator <<planned>> {
+        class ClassLocator <<implemented>> {
             +to_snake_case()
             +expected_module()
             +select()
@@ -133,13 +133,13 @@ package "Adapter Layer" {
 
     package "PlantUML" {
 
-        class PumlParser <<planned>> {
+        class PumlParser <<implemented>> {
             +parse()
             +parse_file()
         }
         PumlParser ..> UmlClass
 
-        class PumlWriter <<planned>> {
+        class PumlWriter <<implemented>> {
             +apply()
             +write_file()
         }
@@ -148,7 +148,7 @@ package "Adapter Layer" {
 
     package "Code" {
 
-        class CodeInspector <<planned>> {
+        class CodeInspector <<implemented>> {
             +inspect()
         }
         CodeInspector ..> CodeClass
