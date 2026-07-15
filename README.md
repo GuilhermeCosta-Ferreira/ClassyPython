@@ -65,7 +65,7 @@ poetry build            # produces dist/classpy-0.1.0-py3-none-any.whl
 pip install /path/to/ClassyPython/dist/classpy-0.1.0-py3-none-any.whl
 ```
 
-Any of these put a `classpy` executable on your PATH. Requires **Python 3.12**.
+Any of these put a `classpy` executable on your PATH. Requires **Python 3.11–3.14**.
 
 > Rendering the diagram to a PNG additionally needs [PlantUML](https://plantuml.com/)
 > (a `plantuml` binary + Java). `classpy` itself only reads and rewrites the `.puml`
