@@ -52,6 +52,7 @@ package "Service Layer" {
         +sync()
         +status()
     }
+    Cli --> SyncService
 }
 
 
@@ -80,6 +81,7 @@ package "Model Domain Layer" {
             +name
             +kind
         }
+        UmlMember ..> MemberKind
 
 
         class UmlClass <<planned>> {
@@ -88,6 +90,7 @@ package "Model Domain Layer" {
             +stereotype
             +members
         }
+        UmlClass ..> UmlMember
 
 
         class CodeClass <<planned>> {
@@ -109,12 +112,15 @@ package "Model Domain Layer" {
         class StatusComparator <<planned>> {
             +compare()
         }
+        StatusComparator ..> ClassComparison
+        StatusComparator ..> ImplementationStatus
 
         class ClassLocator <<planned>> {
             +to_snake_case()
             +expected_module()
             +select()
         }
+        ClassLocator ..> UmlClass
     }
 }
 
@@ -131,11 +137,13 @@ package "Adapter Layer" {
             +parse()
             +parse_file()
         }
+        PumlParser ..> UmlClass
 
         class PumlWriter <<planned>> {
             +apply()
             +write_file()
         }
+        PumlWriter ..> ClassComparison
     }
 
     package "Code" {
@@ -143,6 +151,7 @@ package "Adapter Layer" {
         class CodeInspector <<planned>> {
             +inspect()
         }
+        CodeInspector ..> CodeClass
     }
 }
 
@@ -151,19 +160,10 @@ package "Adapter Layer" {
 'Broken Links'
 '=============================================================================='
 
-!if ($SHOW_DEPENDENCIES == 1)
-Cli --> SyncService
 SyncService --> PumlParser
 SyncService --> CodeInspector
 SyncService --> StatusComparator
 SyncService --> ClassLocator
 SyncService --> PumlWriter
-PumlParser ..> UmlClass
-CodeInspector ..> CodeClass
-StatusComparator ..> ClassComparison
-StatusComparator ..> ImplementationStatus
-UmlClass ..> UmlMember
-UmlMember ..> MemberKind
-!endif
 
 @enduml
