@@ -72,3 +72,31 @@ def test_check_flag_exits_zero_when_current(tmp_path):
         ["sync", "--check", "--puml", str(puml), "--src", str(src)],
     )
     assert result.exit_code == 0
+
+
+def test_defaults_come_from_pyproject_config(tmp_path, monkeypatch):
+    puml, src = _project(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        f'[tool.classpy]\npuml = "{puml.name}"\nsrc = "{src.name}"\n',
+        encoding="utf-8",
+    )
+    # No --puml/--src flags: paths must be resolved from [tool.classpy].
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(build_app(), ["status"])
+    assert result.exit_code == 0
+    assert "Done" in result.output
+
+
+def test_cli_flags_override_pyproject_config(tmp_path, monkeypatch):
+    puml, src = _project(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.classpy]\npuml = "nonexistent.puml"\nsrc = "nowhere"\n',
+        encoding="utf-8",
+    )
+    # Explicit flags must win over the (deliberately broken) config values.
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        build_app(), ["status", "--puml", str(puml), "--src", str(src)]
+    )
+    assert result.exit_code == 0
+    assert "Done" in result.output
