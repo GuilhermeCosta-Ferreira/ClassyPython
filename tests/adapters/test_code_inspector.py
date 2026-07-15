@@ -76,6 +76,60 @@ def test_module_path_is_recorded(tmp_path):
     assert thing.module_path.endswith("pkg/sub/thing.py")
 
 
+def test_detects_stub_method_bodies(tmp_path):
+    _write(
+        tmp_path,
+        "pkg/service.py",
+        '''
+        class Service:
+            def do_pass(self):
+                pass
+
+            def do_ellipsis(self): ...
+
+            def do_raise(self):
+                raise NotImplementedError
+
+            def do_raise_call(self):
+                raise NotImplementedError("later")
+
+            def documented_stub(self):
+                """Docstring then a stub."""
+                ...
+
+            def real(self):
+                return 42
+        ''',
+    )
+    service = _by_name(CodeInspector().inspect(tmp_path))["Service"]
+    assert service.stub_methods == {
+        "do_pass",
+        "do_ellipsis",
+        "do_raise",
+        "do_raise_call",
+        "documented_stub",
+    }
+    assert service.has_stub is True
+
+
+def test_non_stub_methods_are_not_flagged(tmp_path):
+    _write(
+        tmp_path,
+        "pkg/calc.py",
+        '''
+        class Calc:
+            def add(self, a, b):
+                return a + b
+
+            def only_docstring(self):
+                """Not a stub: a docstring alone is a real (returning-None) body."""
+        ''',
+    )
+    calc = _by_name(CodeInspector().inspect(tmp_path))["Calc"]
+    assert calc.stub_methods == set()
+    assert calc.has_stub is False
+
+
 def test_syntax_errors_are_skipped(tmp_path):
     _write(tmp_path, "bad.py", "class Broken(:\n")
     _write(tmp_path, "good.py", "class Good: pass\n")

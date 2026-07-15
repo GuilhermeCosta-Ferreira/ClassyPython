@@ -60,6 +60,37 @@ def test_attribute_declared_matches_code_attribute():
     assert StatusComparator().compare(uml, code).status is ImplementationStatus.IMPLEMENTED
 
 
+def test_declared_member_that_is_a_stub_is_partial():
+    # Edge case 1: the declared method exists but only raises NotImplementedError.
+    uml = _uml("Widget", ["render"])
+    code = CodeClass(
+        "Widget", "src/widget.py", methods={"render"}, stub_methods={"render"}
+    )
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.PARTIAL
+
+
+def test_extra_undeclared_stub_method_is_partial():
+    # Edge case 2: every declared member is present, but an extra method not on
+    # the UML is still a stub -> the class is not fully implemented.
+    uml = _uml("Widget", ["render"])
+    code = CodeClass(
+        "Widget",
+        "src/widget.py",
+        methods={"render", "resize"},
+        stub_methods={"resize"},
+    )
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.PARTIAL
+
+
+def test_all_members_present_and_no_stubs_is_implemented():
+    uml = _uml("Widget", ["render"])
+    code = CodeClass("Widget", "src/widget.py", methods={"render"})
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.IMPLEMENTED
+
+
 def test_external_class_left_untouched():
     uml = _uml("numpy", ["array"], stereotype="external")
     result = StatusComparator().compare(uml, None)
