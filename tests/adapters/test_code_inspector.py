@@ -130,6 +130,47 @@ def test_non_stub_methods_are_not_flagged(tmp_path):
     assert calc.has_stub is False
 
 
+def test_detects_abc_and_protocol_and_abstractmethod(tmp_path):
+    _write(
+        tmp_path,
+        "pkg/abstracts.py",
+        '''
+        import abc
+        from abc import ABC, ABCMeta, abstractmethod
+        from typing import Protocol
+
+
+        class Repo(ABC):
+            @abstractmethod
+            def get(self): ...
+
+
+        class Reader(Protocol):
+            def read(self) -> str: ...
+
+
+        class Meta(metaclass=ABCMeta):
+            pass
+
+
+        class Dotted(abc.ABC):
+            @abc.abstractmethod
+            def run(self): ...
+
+
+        class Plain:
+            def do(self):
+                return 1
+        ''',
+    )
+    classes = _by_name(CodeInspector().inspect(tmp_path))
+    assert classes["Repo"].is_abstract is True
+    assert classes["Reader"].is_abstract is True
+    assert classes["Meta"].is_abstract is True
+    assert classes["Dotted"].is_abstract is True
+    assert classes["Plain"].is_abstract is False
+
+
 def test_syntax_errors_are_skipped(tmp_path):
     _write(tmp_path, "bad.py", "class Broken(:\n")
     _write(tmp_path, "good.py", "class Good: pass\n")

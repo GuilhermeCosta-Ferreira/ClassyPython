@@ -100,3 +100,25 @@ def test_enum_values_parsed_as_attributes():
 def test_relationship_lines_are_not_classes():
     names = {c.name for c in PumlParser().parse(SAMPLE)}
     assert "-->" not in names and ".." not in names
+
+
+def test_abstract_and_interface_flag_is_abstract():
+    text = """
+    @startuml
+    abstract class Repository {
+        +get()
+    }
+    interface Reader {
+        +read()
+    }
+    class Concrete {
+        +run()
+    }
+    @enduml
+    """
+    classes = _by_name(PumlParser().parse(text))
+    assert classes["Repository"].is_abstract is True
+    assert classes["Reader"].is_abstract is True
+    assert classes["Concrete"].is_abstract is False
+    # keyword capture must not corrupt names, stereotypes, or members
+    assert [m.name for m in classes["Repository"].members] == ["get"]

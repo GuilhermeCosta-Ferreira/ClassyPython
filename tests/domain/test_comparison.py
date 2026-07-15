@@ -91,6 +91,44 @@ def test_all_members_present_and_no_stubs_is_implemented():
     assert result.status is ImplementationStatus.IMPLEMENTED
 
 
+def test_abstract_uml_class_with_stub_is_implemented():
+    # Edge case: an abstract UML class is exempt from the stub rule — its methods
+    # are meant to be empty, so all-members-present is enough for implemented.
+    uml = _uml("Repository", ["get"])
+    uml.is_abstract = True
+    code = CodeClass(
+        "Repository", "src/repo.py", methods={"get"}, stub_methods={"get"}
+    )
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.IMPLEMENTED
+
+
+def test_abstract_code_class_with_stub_is_implemented():
+    # The abstractness can come from the code side (ABC/Protocol) too.
+    uml = _uml("Repository", ["get"])
+    code = CodeClass(
+        "Repository",
+        "src/repo.py",
+        methods={"get"},
+        stub_methods={"get"},
+        is_abstract=True,
+    )
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.IMPLEMENTED
+
+
+def test_abstract_class_still_partial_when_members_missing():
+    # Exemption only covers the stub rule; missing members still means partial.
+    uml = _uml("Repository", ["get", "save"])
+    uml.is_abstract = True
+    code = CodeClass(
+        "Repository", "src/repo.py", methods={"get"}, stub_methods={"get"}
+    )
+    result = StatusComparator().compare(uml, code)
+    assert result.status is ImplementationStatus.PARTIAL
+    assert [m.name for m in result.missing_members] == ["save"]
+
+
 def test_external_class_left_untouched():
     uml = _uml("numpy", ["array"], stereotype="external")
     result = StatusComparator().compare(uml, None)
