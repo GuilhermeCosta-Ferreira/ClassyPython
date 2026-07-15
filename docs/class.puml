@@ -153,6 +153,22 @@ package "Adapter Layer" {
         }
         CodeInspector ..> CodeClass
     }
+
+    package "Config" {
+
+        class ClasspyConfig <<implemented>> {
+            +puml
+            +src
+        }
+
+        class ConfigLoader <<implemented>> {
+            +filename
+            +find_config_file()
+            +load()
+            +load_file()
+        }
+        ConfigLoader ..> ClasspyConfig
+    }
 }
 
 
@@ -165,5 +181,7 @@ SyncService --> CodeInspector
 SyncService --> StatusComparator
 SyncService --> ClassLocator
 SyncService --> PumlWriter
+
+Cli --> ConfigLoader
 
 @enduml
