@@ -4,6 +4,10 @@ For each class we collect:
   * **methods** — functions defined directly in the class body.
   * **attributes** — class-level assignments/annotations (including dataclass
     fields and Enum members) and ``self.<name> = ...`` assignments in any method.
+  * **stub_methods** — the subset of methods whose body carries no real
+    implementation: only ``pass``, ``...`` (Ellipsis), or ``raise
+    NotImplementedError`` (an optional leading docstring is ignored). These keep
+    a class from counting as fully implemented.
 """
 
 from __future__ import annotations
@@ -35,26 +39,32 @@ class CodeInspector:
         classes: list[CodeClass] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
-                attributes, methods = self._extract_members(node)
+                attributes, methods, stub_methods = self._extract_members(node)
                 classes.append(
                     CodeClass(
                         name=node.name,
                         module_path=module_path,
                         attributes=attributes,
                         methods=methods,
+                        stub_methods=stub_methods,
                     )
                 )
         return classes
 
     @staticmethod
-    def _extract_members(node: ast.ClassDef) -> tuple[set[str], set[str]]:
+    def _extract_members(
+        node: ast.ClassDef,
+    ) -> tuple[set[str], set[str], set[str]]:
         attributes: set[str] = set()
         methods: set[str] = set()
+        stub_methods: set[str] = set()
 
         for item in node.body:
             if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 methods.add(item.name)
                 attributes.update(_self_assignments(item))
+                if _is_stub_body(item.body):
+                    stub_methods.add(item.name)
             elif isinstance(item, ast.Assign):
                 attributes.update(
                     t.id for t in item.targets if isinstance(t, ast.Name)
@@ -64,7 +74,7 @@ class CodeInspector:
             ):
                 attributes.add(item.target.id)
 
-        return attributes, methods
+        return attributes, methods, stub_methods
 
 
 def _self_assignments(func: ast.AST) -> set[str]:
@@ -86,3 +96,46 @@ def _is_self_attr(node: ast.AST) -> bool:
         and isinstance(node.value, ast.Name)
         and node.value.id == "self"
     )
+
+
+def _is_stub_body(body: list[ast.stmt]) -> bool:
+    """True when a function body has no real implementation.
+
+    A leading docstring is ignored; what remains must be a single ``pass``,
+    ``...`` (Ellipsis), or ``raise NotImplementedError`` statement.
+    """
+    if body and _is_docstring(body[0]):
+        body = body[1:]
+    if len(body) != 1:
+        return False
+    stmt = body[0]
+    if isinstance(stmt, ast.Pass):
+        return True
+    if _is_ellipsis(stmt):
+        return True
+    if isinstance(stmt, ast.Raise):
+        return _raises_not_implemented(stmt)
+    return False
+
+
+def _is_docstring(stmt: ast.stmt) -> bool:
+    return (
+        isinstance(stmt, ast.Expr)
+        and isinstance(stmt.value, ast.Constant)
+        and isinstance(stmt.value.value, str)
+    )
+
+
+def _is_ellipsis(stmt: ast.stmt) -> bool:
+    return (
+        isinstance(stmt, ast.Expr)
+        and isinstance(stmt.value, ast.Constant)
+        and stmt.value.value is Ellipsis
+    )
+
+
+def _raises_not_implemented(node: ast.Raise) -> bool:
+    exc = node.exc
+    if isinstance(exc, ast.Call):
+        exc = exc.func
+    return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"

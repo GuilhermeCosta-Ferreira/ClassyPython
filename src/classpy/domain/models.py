@@ -60,11 +60,17 @@ class CodeClass:
     module_path: str
     attributes: set[str] = field(default_factory=set)
     methods: set[str] = field(default_factory=set)
+    stub_methods: set[str] = field(default_factory=set)
 
     @property
     def member_names(self) -> set[str]:
         """Every attribute and method name defined on the class."""
         return self.attributes | self.methods
+
+    @property
+    def has_stub(self) -> bool:
+        """True when any method body is only ``pass``/``...``/``NotImplementedError``."""
+        return bool(self.stub_methods)
 
 
 @dataclass

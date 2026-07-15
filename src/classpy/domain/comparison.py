@@ -17,8 +17,11 @@ class StatusComparator:
       * ``external`` UML classes are left untouched.
       * no matching code class -> ``planned``.
       * code class present but declared members missing -> ``partial``.
-      * code class present with every declared member -> ``implemented``.
-      * a UML class with no declared members can only be planned or implemented.
+      * code class present with every declared member, but some method is only a
+        stub (``pass`` / ``...`` / ``raise NotImplementedError``) -> ``partial``.
+        This holds whether or not the stub method is one of the declared members.
+      * code class present with every declared member and no stub methods
+        -> ``implemented``.
     """
 
     def compare(
@@ -37,4 +40,6 @@ class StatusComparator:
 
         if missing:
             return ClassComparison(uml_class, ImplementationStatus.PARTIAL, missing)
+        if code_class.has_stub:
+            return ClassComparison(uml_class, ImplementationStatus.PARTIAL, [])
         return ClassComparison(uml_class, ImplementationStatus.IMPLEMENTED, [])
