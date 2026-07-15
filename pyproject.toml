@@ -8,7 +8,11 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12, <3.13"
 dependencies = [
+    "typer (>=0.27.0,<0.28.0)"
 ]
+
+[project.scripts]
+classpy = "classpy.adapters.cli.app:main"
 
 [tool.poetry]
 packages = [{include = "classpy", from = "src"}]
@@ -16,3 +20,12 @@ packages = [{include = "classpy", from = "src"}]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
