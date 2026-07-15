@@ -1,0 +1,63 @@
+@startuml
+left to right direction
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor<<implemented>> #D5F5D5
+    BorderColor<<implemented>> #2E7D32
+    FontColor<<implemented>> #1B5E20
+
+    BackgroundColor<<partial>> #FFF3CD
+    BorderColor<<partial>> #B8860B
+    FontColor<<partial>> #7A5600
+
+    BackgroundColor<<planned>> #F8D7DA
+    BorderColor<<planned>> #B02A37
+    FontColor<<planned>> #842029
+
+    BackgroundColor<<external>> #E3F2FD
+    BorderColor<<external>> #1565C0
+    FontColor<<external>> #0D47A1
+}
+
+legend right
+|= Colour |
+|<#D5F5D5> Implemented |
+|<#FFF3CD> Partially implemented |
+|<#F8D7DA> Planned / not implemented |
+|<#E3F2FD> External dependency |
+endlegend
+
+' 0 = hide dependency lines
+' 1 = show dependency lines
+!$SHOW_DEPENDENCIES = 0
+
+
+'=============================================================================='
+'Service Layer'
+'=============================================================================='
+
+
+
+'=============================================================================='
+'Model Domain'
+'=============================================================================='
+
+
+
+
+'=============================================================================='
+'Adapter Layer'
+'=============================================================================='
+
+
+
+'=============================================================================='
+'Broken Links'
+'=============================================================================='
+
+
+@enduml
+
+
+
+'!if ($SHOW_DEPENDENCIES == 1)'
