@@ -36,28 +36,134 @@ endlegend
 'Service Layer'
 '=============================================================================='
 
+package "Service Layer" {
+    class SyncService <<planned>> {
+        +parser
+        +inspector
+        +comparator
+        +locator
+        +writer
+        +sync()
+        +status()
+    }
+
+
+    class Cli <<planned>> {
+        +sync()
+        +status()
+    }
+}
 
 
 '=============================================================================='
 'Model Domain'
 '=============================================================================='
 
+package "Model Domain Layer" {
 
+    package "Models" {
+        enum ImplementationStatus <<planned>> {
+            PLANNED
+            PARTIAL
+            IMPLEMENTED
+            EXTERNAL
+        }
+
+
+        enum MemberKind <<planned>> {
+            ATTRIBUTE
+            METHOD
+        }
+
+
+        class UmlMember <<planned>> {
+            +name
+            +kind
+        }
+
+
+        class UmlClass <<planned>> {
+            +name
+            +package
+            +stereotype
+            +members
+        }
+
+
+        class CodeClass <<planned>> {
+            +name
+            +module_path
+            +attributes
+            +methods
+        }
+
+        class ClassComparison <<planned>> {
+            +uml_class
+            +status
+            +missing_members
+        }
+    }
+
+    package "Analysis" {
+
+        class StatusComparator <<planned>> {
+            +compare()
+        }
+
+        class ClassLocator <<planned>> {
+            +to_snake_case()
+            +expected_module()
+            +select()
+        }
+    }
+}
 
 
 '=============================================================================='
 'Adapter Layer'
 '=============================================================================='
 
+package "Adapter Layer" {
+
+    package "PlantUML" {
+
+        class PumlParser <<planned>> {
+            +parse()
+            +parse_file()
+        }
+
+        class PumlWriter <<planned>> {
+            +apply()
+            +write_file()
+        }
+    }
+
+    package "Code" {
+
+        class CodeInspector <<planned>> {
+            +inspect()
+        }
+    }
+}
 
 
 '=============================================================================='
 'Broken Links'
 '=============================================================================='
 
+!if ($SHOW_DEPENDENCIES == 1)
+Cli --> SyncService
+SyncService --> PumlParser
+SyncService --> CodeInspector
+SyncService --> StatusComparator
+SyncService --> ClassLocator
+SyncService --> PumlWriter
+PumlParser ..> UmlClass
+CodeInspector ..> CodeClass
+StatusComparator ..> ClassComparison
+StatusComparator ..> ImplementationStatus
+UmlClass ..> UmlMember
+UmlMember ..> MemberKind
+!endif
 
 @enduml
-
-
-
-'!if ($SHOW_DEPENDENCIES == 1)'
