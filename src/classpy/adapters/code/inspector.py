@@ -8,6 +8,10 @@ For each class we collect:
     implementation: only ``pass``, ``...`` (Ellipsis), or ``raise
     NotImplementedError`` (an optional leading docstring is ignored). These keep
     a class from counting as fully implemented.
+  * **is_abstract** — whether the class is an abstract base or a ``Protocol``
+    (an ``ABC``/``Protocol`` base, an ``ABCMeta`` metaclass, or an
+    ``@abstractmethod`` on any method). Abstract classes are exempt from the stub
+    rule, since empty method bodies are expected there.
 """
 
 from __future__ import annotations
@@ -47,6 +51,7 @@ class CodeInspector:
                         attributes=attributes,
                         methods=methods,
                         stub_methods=stub_methods,
+                        is_abstract=_is_abstract_class(node),
                     )
                 )
         return classes
@@ -75,6 +80,39 @@ class CodeInspector:
                 attributes.add(item.target.id)
 
         return attributes, methods, stub_methods
+
+
+def _is_abstract_class(node: ast.ClassDef) -> bool:
+    """True when a class is an abstract base or a ``Protocol``.
+
+    Detected via any of: an ``ABC`` / ``Protocol`` base (bare or dotted, e.g.
+    ``abc.ABC``, ``typing.Protocol``), an ``ABCMeta`` ``metaclass=`` keyword, or
+    any method carrying an ``@abstractmethod`` decorator.
+    """
+    abstract_bases = {"ABC", "ABCMeta", "Protocol"}
+    for base in node.bases:
+        if _base_name(base) in abstract_bases:
+            return True
+    for keyword in node.keywords:
+        if keyword.arg == "metaclass" and _base_name(keyword.value) == "ABCMeta":
+            return True
+    for item in node.body:
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in item.decorator_list:
+                if _base_name(decorator).endswith("abstractmethod"):
+                    return True
+    return False
+
+
+def _base_name(node: ast.AST) -> str:
+    """The trailing identifier of a ``Name``/``Attribute``/``Call`` reference."""
+    if isinstance(node, ast.Call):
+        node = node.func
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    if isinstance(node, ast.Name):
+        return node.id
+    return ""
 
 
 def _self_assignments(func: ast.AST) -> set[str]:

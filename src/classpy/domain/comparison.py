@@ -22,6 +22,11 @@ class StatusComparator:
         This holds whether or not the stub method is one of the declared members.
       * code class present with every declared member and no stub methods
         -> ``implemented``.
+
+    The stub rule is **ignored for abstract classes** — those declared
+    ``abstract``/``interface`` in the UML, or backed by an ``ABC``/``Protocol``
+    (or ``@abstractmethod``) in the code — because stub method bodies are their
+    whole point. Such a class is ``implemented`` once all members are present.
     """
 
     def compare(
@@ -40,6 +45,7 @@ class StatusComparator:
 
         if missing:
             return ClassComparison(uml_class, ImplementationStatus.PARTIAL, missing)
-        if code_class.has_stub:
+        is_abstract = uml_class.is_abstract or code_class.is_abstract
+        if code_class.has_stub and not is_abstract:
             return ClassComparison(uml_class, ImplementationStatus.PARTIAL, [])
         return ClassComparison(uml_class, ImplementationStatus.IMPLEMENTED, [])

@@ -50,6 +50,7 @@ class UmlClass:
     package: str
     stereotype: str
     members: list[UmlMember] = field(default_factory=list)
+    is_abstract: bool = False
 
 
 @dataclass
@@ -61,6 +62,7 @@ class CodeClass:
     attributes: set[str] = field(default_factory=set)
     methods: set[str] = field(default_factory=set)
     stub_methods: set[str] = field(default_factory=set)
+    is_abstract: bool = False
 
     @property
     def member_names(self) -> set[str]:

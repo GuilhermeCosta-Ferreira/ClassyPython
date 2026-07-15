@@ -15,7 +15,7 @@ from classpy.domain.models import MemberKind, UmlClass, UmlMember
 
 _PACKAGE_RE = re.compile(r'^\s*package\s+(?:"([^"]*)"|(\S+))\s*\{\s*$')
 _CLASS_RE = re.compile(
-    r"^\s*(?:abstract\s+)?(?:class|enum|interface)\s+(\w+)\s*"
+    r"^\s*(abstract\s+)?(class|enum|interface)\s+(\w+)\s*"
     r"(?:<<\s*(\w+)\s*>>)?\s*(\{)?\s*$"
 )
 _VISIBILITY = "+-#~"
@@ -54,12 +54,14 @@ class PumlParser:
 
             class_match = _CLASS_RE.match(raw_line)
             if class_match:
+                keyword = class_match.group(2)
                 new_class = UmlClass(
-                    name=class_match.group(1),
+                    name=class_match.group(3),
                     package="/".join(package_stack),
-                    stereotype=(class_match.group(2) or "").lower(),
+                    stereotype=(class_match.group(4) or "").lower(),
+                    is_abstract=bool(class_match.group(1)) or keyword == "interface",
                 )
-                if class_match.group(3):  # opening brace -> has a body
+                if class_match.group(5):  # opening brace -> has a body
                     current = new_class
                 else:
                     classes.append(new_class)
