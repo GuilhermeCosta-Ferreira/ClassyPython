@@ -35,8 +35,7 @@ endlegend
 '=============================================================================='
 'Service Layer'
 '=============================================================================='
-
-package "Service Layer" {
+package "Service Layer" #E8F5E9 {
     class SyncService <<implemented>> {
         +parser
         +inspector
@@ -62,8 +61,7 @@ package "Service Layer" {
 '=============================================================================='
 'Model Domain'
 '=============================================================================='
-
-package "Model Domain Layer" {
+package "Model Domain Layer" #FFF8E1 {
 
     package "Models" {
         enum ImplementationStatus <<implemented>> {
@@ -148,8 +146,7 @@ package "Model Domain Layer" {
 '=============================================================================='
 'Adapter Layer'
 '=============================================================================='
-
-package "Adapter Layer" {
+package "Adapter Layer" #E3F2FD {
 
     package "PlantUML" {
 
