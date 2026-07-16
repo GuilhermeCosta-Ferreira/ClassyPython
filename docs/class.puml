@@ -44,10 +44,12 @@ package "Service Layer" #E8F5E9 {
         +writer
         +orderer
         +scaffold
+        +balancer
         +init()
         +sync()
         +status()
         +pending()
+        +balance()
     }
 
 
@@ -56,6 +58,7 @@ package "Service Layer" #E8F5E9 {
         +sync()
         +status()
         +todo()
+        +balance()
     }
     Cli --> SyncService
 }
@@ -120,6 +123,13 @@ package "Model Domain Layer" #FFF8E1 {
             +depends_on
         }
         OrderedClass ..> ClassComparison
+
+        class BalanceEntry <<implemented>> {
+            +name
+            +uml_count
+            +code_count
+            +diff
+        }
     }
 
     package "Analysis" {
@@ -142,6 +152,17 @@ package "Model Domain Layer" #FFF8E1 {
         }
         DependencyOrderer ..> OrderedClass
         DependencyOrderer ..> UmlRelationship
+
+        enum SortMode <<implemented>> {
+            ABS
+            SIGNED
+        }
+
+        class BalanceCalculator <<implemented>> {
+            +calculate()
+        }
+        BalanceCalculator ..> BalanceEntry
+        BalanceCalculator ..> SortMode
     }
 }
 
@@ -210,6 +231,7 @@ SyncService --> ClassLocator
 SyncService --> PumlWriter
 SyncService --> DependencyOrderer
 SyncService --> PumlScaffold
+SyncService --> BalanceCalculator
 
 PumlParser ..> UmlRelationship
 

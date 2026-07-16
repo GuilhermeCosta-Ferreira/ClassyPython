@@ -192,7 +192,37 @@ to also include partially-implemented classes. Dependencies on classes that are
 *already implemented* are treated as done — they never hold a class back or show
 up in the `needs …` hint.
 
-### 5. Enforce it in CI
+### 5. See how far each class has drifted
+
+`classpy balance` charts every class on a single axis: a bar grows **left** when
+the UML declares more members than the code implements (unbuilt surface), and
+**right** when the code carries members the UML never declared (undocumented
+surface). External classes are skipped.
+
+```bash
+classpy balance --puml docs/class.puml --src src
+```
+
+```
+                                   UML ◄──┼──► code
+──────────────────────────────────────────┼────────────────────
+StatusComparator                  ████████│                      UML +4
+ClassLocator                           ███│                      UML +2
+DependencyOrderer                       ─┼─                      even
+SyncService                            │███                      code -3
+CodeInspector                          │██████                   code -6
+──────────────────────────────────────────┼────────────────────
+                                   UML ◄──┼──► code
+```
+
+Counting rules: the UML side is the number of declared members; the code side is
+the matched class's attributes + methods. Free functions (not inside a class) are
+never counted. Underscore-prefixed **private** members on the code side are
+excluded by default — pass `--private` (a.k.a. `--count-private`) to include them.
+Rows are ordered by absolute difference (biggest gap first); use `--sort signed`
+to group UML-heavy classes first, then even, then code-heavy.
+
+### 6. Enforce it in CI
 
 `--check` computes status, writes nothing, and exits non-zero if the diagram is
 stale — so a pull request fails when someone forgets to resync:
@@ -213,6 +243,9 @@ classpy sync --check --puml docs/class.puml --src src
 | `classpy sync --check`  | Report + exit non-zero if stale (writes nothing). For CI.           |
 | `classpy todo`          | List unimplemented classes in build order (least-dependent first).  |
 | `classpy todo --partial`| Same, but also include partially-implemented classes.               |
+| `classpy balance`       | Chart UML-declared vs. code-implemented member counts per class.    |
+| `classpy balance --private` | Same, but also count underscore-prefixed private code members.  |
+| `classpy balance --sort signed` | Order rows UML-heavy → even → code-heavy (default: `abs`).   |
 
 Shared options: `--puml PATH`, `--src PATH`. Resolution order for each is
 **CLI flag → `[tool.classpy]` in `pyproject.toml` → built-in default**
