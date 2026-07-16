@@ -43,6 +43,8 @@ package "Service Layer" #E8F5E9 {
         +locator
         +writer
         +orderer
+        +scaffold
+        +init()
         +sync()
         +status()
         +pending()
@@ -50,6 +52,7 @@ package "Service Layer" #E8F5E9 {
 
 
     class Cli <<implemented>> {
+        +init()
         +sync()
         +status()
         +todo()
@@ -163,6 +166,11 @@ package "Adapter Layer" #E3F2FD {
             +write_file()
         }
         PumlWriter ..> ClassComparison
+
+        class PumlScaffold <<implemented>> {
+            +template
+            +create_file()
+        }
     }
 
     package "Code" {
@@ -201,6 +209,7 @@ SyncService --> StatusComparator
 SyncService --> ClassLocator
 SyncService --> PumlWriter
 SyncService --> DependencyOrderer
+SyncService --> PumlScaffold
 
 PumlParser ..> UmlRelationship
 

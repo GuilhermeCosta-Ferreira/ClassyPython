@@ -94,6 +94,17 @@ Any of these put a `classpy` executable on your PATH. Requires **Python 3.11–3
 
 ## Using it in another project
 
+### 0. Scaffold a diagram (optional)
+
+```bash
+classpy init
+```
+
+This creates `docs/class.puml` (making the `docs/` folder if needed) from an empty
+template: the three layer packages with their fill colours, the status legend and
+the stereotype tags, but no classes. If the file already exists it is left
+untouched. Use `--puml PATH` to write somewhere else.
+
 ### 1. Describe your architecture in a `.puml` file
 
 Create `docs/class.puml`. Declare each class you intend to build, listing the
@@ -196,6 +207,7 @@ classpy sync --check --puml docs/class.puml --src src
 
 | Command                 | What it does                                                        |
 | ----------------------- | ------------------------------------------------------------------- |
+| `classpy init`          | Scaffold an empty `docs/class.puml` (layers + legend, no classes).  |
 | `classpy status`        | Report each class's status. Never writes.                           |
 | `classpy sync`          | Repaint the `.puml` stereotypes to match the code.                  |
 | `classpy sync --check`  | Report + exit non-zero if stale (writes nothing). For CI.           |
