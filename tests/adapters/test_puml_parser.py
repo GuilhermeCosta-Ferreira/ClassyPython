@@ -1,7 +1,7 @@
 """Tests for the PlantUML parser."""
 
 from classpy.adapters.puml.parser import PumlParser
-from classpy.domain.models import MemberKind
+from classpy.domain.models import MemberKind, UmlRelationship
 
 SAMPLE = """
 @startuml
@@ -122,3 +122,31 @@ def test_abstract_and_interface_flag_is_abstract():
     assert classes["Concrete"].is_abstract is False
     # keyword capture must not corrupt names, stereotypes, or members
     assert [m.name for m in classes["Repository"].members] == ["get"]
+
+
+def test_parses_directed_relationships():
+    rels = set(PumlParser().parse_relationships(SAMPLE))
+    assert UmlRelationship("Cli", "SyncService") in rels
+    assert UmlRelationship("UmlMember", "MemberKind") in rels
+    # only real relationship lines, not class/package declarations
+    assert len(rels) == 2
+
+
+def test_arrowhead_direction_normalised_to_dependent_source():
+    text = """
+    @startuml
+    A --> B
+    C <-- D
+    E ..|> F
+    G *-- H
+    I --o J
+    K "1" --> "many" L : owns
+    @enduml
+    """
+    rels = set(PumlParser().parse_relationships(text))
+    assert UmlRelationship("A", "B") in rels  # right head
+    assert UmlRelationship("D", "C") in rels  # left head flips
+    assert UmlRelationship("E", "F") in rels  # realization
+    assert UmlRelationship("G", "H") in rels  # composition owner on left
+    assert UmlRelationship("J", "I") in rels  # aggregation owner on right flips
+    assert UmlRelationship("K", "L") in rels  # multiplicities + label ignored

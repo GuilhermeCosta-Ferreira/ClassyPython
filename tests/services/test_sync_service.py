@@ -20,6 +20,7 @@ DIAGRAM = dedent(
         class Missing <<planned>> {
             +run()
         }
+        Missing --> Half
     }
     class numpy <<external>> {
         +array()
@@ -92,3 +93,24 @@ def test_second_sync_is_idempotent(tmp_path):
     SyncService().sync(puml, src)
     report = SyncService().sync(puml, src)
     assert report.is_stale is False
+
+
+def _pending_names(report):
+    return [o.comparison.uml_class.name for o in report.ordered]
+
+
+def test_pending_lists_only_planned_by_default(tmp_path):
+    puml, src = _make_project(tmp_path)
+    report = SyncService().pending(puml, src)
+    # Done is implemented, Half is partial, numpy external -> only Missing.
+    assert _pending_names(report) == ["Missing"]
+    assert report.ordered[0].depends_on == []  # Half is out of scope
+
+
+def test_pending_includes_partial_when_requested(tmp_path):
+    puml, src = _make_project(tmp_path)
+    report = SyncService().pending(puml, src, include_partial=True)
+    # Missing depends on Half, so Half (the leaf) must come first.
+    assert _pending_names(report) == ["Half", "Missing"]
+    by_name = {o.comparison.uml_class.name: o for o in report.ordered}
+    assert by_name["Missing"].depends_on == ["Half"]

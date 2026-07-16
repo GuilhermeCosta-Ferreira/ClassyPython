@@ -17,6 +17,7 @@ DIAGRAM = dedent(
     class Missing <<planned>> {
         +run()
     }
+    Missing --> Done
     @enduml
     """
 ).strip()
@@ -85,6 +86,32 @@ def test_defaults_come_from_pyproject_config(tmp_path, monkeypatch):
     result = runner.invoke(build_app(), ["status"])
     assert result.exit_code == 0
     assert "Done" in result.output
+
+
+def test_todo_lists_planned_classes_in_build_order(tmp_path):
+    puml, src = _project(tmp_path)
+    result = runner.invoke(
+        build_app(), ["todo", "--puml", str(puml), "--src", str(src)]
+    )
+    assert result.exit_code == 0
+    # Done is implemented; only the planned Missing is listed.
+    assert "Missing" in result.output
+    assert "1 class(es) to implement." in result.output
+
+
+def test_todo_partial_flag_widens_the_scope(tmp_path):
+    puml, src = _project(tmp_path)
+    # Make Done partial by adding an unmet member; it should then show up too.
+    puml.write_text(
+        DIAGRAM.replace("class Done <<planned>> {\n    +run()", "class Done"
+                        " <<planned>> {\n    +run()\n    +stop()"),
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        build_app(), ["todo", "--partial", "--puml", str(puml), "--src", str(src)]
+    )
+    assert result.exit_code == 0
+    assert "Done" in result.output and "Missing" in result.output
 
 
 def test_cli_flags_override_pyproject_config(tmp_path, monkeypatch):
