@@ -34,6 +34,24 @@ def _project(tmp_path):
     return puml, src
 
 
+def test_init_creates_diagram_and_its_folder(tmp_path):
+    puml = tmp_path / "docs" / "class.puml"
+    result = runner.invoke(build_app(), ["init", "--puml", str(puml)])
+    assert result.exit_code == 0
+    assert puml.is_file()
+    assert "@startuml" in puml.read_text(encoding="utf-8")
+    assert "Created" in result.output
+
+
+def test_init_leaves_an_existing_diagram_untouched(tmp_path):
+    puml = tmp_path / "class.puml"
+    puml.write_text("existing", encoding="utf-8")
+    result = runner.invoke(build_app(), ["init", "--puml", str(puml)])
+    assert result.exit_code == 0
+    assert puml.read_text(encoding="utf-8") == "existing"
+    assert "already exists" in result.output
+
+
 def test_status_command_reports_without_writing(tmp_path):
     puml, src = _project(tmp_path)
     before = puml.read_text(encoding="utf-8")
