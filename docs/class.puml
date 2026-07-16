@@ -43,14 +43,17 @@ package "Service Layer" {
         +comparator
         +locator
         +writer
+        +orderer
         +sync()
         +status()
+        +pending()
     }
 
 
     class Cli <<implemented>> {
         +sync()
         +status()
+        +todo()
     }
     Cli --> SyncService
 }
@@ -105,6 +108,17 @@ package "Model Domain Layer" {
             +status
             +missing_members
         }
+
+        class UmlRelationship <<implemented>> {
+            +source
+            +target
+        }
+
+        class OrderedClass <<implemented>> {
+            +comparison
+            +depends_on
+        }
+        OrderedClass ..> ClassComparison
     }
 
     package "Analysis" {
@@ -121,6 +135,12 @@ package "Model Domain Layer" {
             +select()
         }
         ClassLocator ..> UmlClass
+
+        class DependencyOrderer <<implemented>> {
+            +order()
+        }
+        DependencyOrderer ..> OrderedClass
+        DependencyOrderer ..> UmlRelationship
     }
 }
 
@@ -136,6 +156,8 @@ package "Adapter Layer" {
         class PumlParser <<implemented>> {
             +parse()
             +parse_file()
+            +parse_relationships()
+            +parse_relationships_file()
         }
         PumlParser ..> UmlClass
 
@@ -181,6 +203,9 @@ SyncService --> CodeInspector
 SyncService --> StatusComparator
 SyncService --> ClassLocator
 SyncService --> PumlWriter
+SyncService --> DependencyOrderer
+
+PumlParser ..> UmlRelationship
 
 Cli --> ConfigLoader
 

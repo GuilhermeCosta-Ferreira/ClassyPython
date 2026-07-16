@@ -155,7 +155,33 @@ Regenerate the image afterward with PlantUML if you want a PNG:
 plantuml -tpng docs/class.puml
 ```
 
-### 4. Enforce it in CI
+### 4. Plan what to build next
+
+`classpy todo` lists the classes that aren't implemented yet, sorted **least-
+dependent first** — a ready-to-follow build order where every class appears
+after the (still-unbuilt) classes it depends on:
+
+```bash
+classpy todo --puml docs/class.puml --src src
+```
+
+```
+Build order (least-dependent first):
+
+ 1. [plan] Parser
+ 2. [plan] Writer
+ 3. [plan] Service  (needs Parser, Writer)
+ 4. [plan] Cli  (needs Service)
+
+4 class(es) to implement.
+```
+
+By default only `planned` (not-yet-started) classes are listed. Add `--partial`
+to also include partially-implemented classes. Dependencies on classes that are
+*already implemented* are treated as done — they never hold a class back or show
+up in the `needs …` hint.
+
+### 5. Enforce it in CI
 
 `--check` computes status, writes nothing, and exits non-zero if the diagram is
 stale — so a pull request fails when someone forgets to resync:
@@ -168,11 +194,13 @@ classpy sync --check --puml docs/class.puml --src src
 
 ## Command reference
 
-| Command              | What it does                                                        |
-| -------------------- | ------------------------------------------------------------------- |
-| `classpy status`     | Report each class's status. Never writes.                           |
-| `classpy sync`       | Repaint the `.puml` stereotypes to match the code.                  |
-| `classpy sync --check` | Report + exit non-zero if stale (writes nothing). For CI.         |
+| Command                 | What it does                                                        |
+| ----------------------- | ------------------------------------------------------------------- |
+| `classpy status`        | Report each class's status. Never writes.                           |
+| `classpy sync`          | Repaint the `.puml` stereotypes to match the code.                  |
+| `classpy sync --check`  | Report + exit non-zero if stale (writes nothing). For CI.           |
+| `classpy todo`          | List unimplemented classes in build order (least-dependent first).  |
+| `classpy todo --partial`| Same, but also include partially-implemented classes.               |
 
 Shared options: `--puml PATH`, `--src PATH`. Resolution order for each is
 **CLI flag → `[tool.classpy]` in `pyproject.toml` → built-in default**
