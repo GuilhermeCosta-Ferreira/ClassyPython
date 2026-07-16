@@ -8,6 +8,7 @@ from pathlib import Path
 
 from classpy.adapters.code.inspector import CodeInspector
 from classpy.adapters.puml.parser import PumlParser
+from classpy.adapters.puml.scaffold import PumlScaffold
 from classpy.adapters.puml.writer import PumlWriter
 from classpy.domain.comparison import StatusComparator
 from classpy.domain.dependency import DependencyOrderer
@@ -66,6 +67,7 @@ class SyncService:
         locator: ClassLocator | None = None,
         writer: PumlWriter | None = None,
         orderer: DependencyOrderer | None = None,
+        scaffold: PumlScaffold | None = None,
     ) -> None:
         self.parser = parser or PumlParser()
         self.inspector = inspector or CodeInspector()
@@ -73,6 +75,15 @@ class SyncService:
         self.locator = locator or ClassLocator()
         self.writer = writer or PumlWriter()
         self.orderer = orderer or DependencyOrderer()
+        self.scaffold = scaffold or PumlScaffold()
+
+    def init(self, puml_path: str | Path) -> bool:
+        """Scaffold an empty diagram at ``puml_path`` (creating parent folders).
+
+        Return ``True`` when the file was created, ``False`` when it already
+        existed and was left untouched.
+        """
+        return self.scaffold.create_file(puml_path)
 
     def status(self, puml_path: str | Path, source_root: str | Path) -> SyncReport:
         """Compute each class's status without modifying the diagram."""

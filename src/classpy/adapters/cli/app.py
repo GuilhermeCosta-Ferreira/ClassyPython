@@ -47,6 +47,19 @@ class Cli:
             src or config.src or DEFAULT_SRC,
         )
 
+    def init(
+        self,
+        puml: str | None = _PUML_OPTION,
+        src: str | None = _SRC_OPTION,
+    ) -> None:
+        """Scaffold an empty class diagram, creating its folder if needed."""
+        puml, _ = self._resolve(puml, src)
+        created = self.service.init(puml)
+        if created:
+            typer.echo(f"Created {puml}")
+        else:
+            typer.echo(f"{puml} already exists — leaving it untouched.")
+
     def status(
         self,
         puml: str | None = _PUML_OPTION,
@@ -157,6 +170,7 @@ def build_app() -> typer.Typer:
         add_completion=False,
     )
     cli = Cli()
+    app.command()(cli.init)
     app.command()(cli.status)
     app.command()(cli.sync)
     app.command()(cli.todo)
