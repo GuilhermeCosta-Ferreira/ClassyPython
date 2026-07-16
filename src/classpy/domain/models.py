@@ -75,6 +75,19 @@ class CodeClass:
         return bool(self.stub_methods)
 
 
+@dataclass(frozen=True)
+class UmlRelationship:
+    """A directed dependency between two UML classes, ``source`` -> ``target``.
+
+    ``source`` depends on ``target`` (needs it to be built first). Parsed from a
+    PlantUML relationship line; arrowhead direction is normalised so ``source``
+    is always the dependent side.
+    """
+
+    source: str
+    target: str
+
+
 @dataclass
 class ClassComparison:
     """The outcome of comparing one UML class against the code."""
@@ -82,3 +95,16 @@ class ClassComparison:
     uml_class: UmlClass
     status: ImplementationStatus
     missing_members: list[UmlMember] = field(default_factory=list)
+
+
+@dataclass
+class OrderedClass:
+    """A pending class placed in build order, with its unbuilt dependencies.
+
+    ``depends_on`` lists the names of the *other pending classes* this one
+    depends on — already-implemented dependencies are omitted since they are
+    done. An empty list means the class is a leaf and can be built immediately.
+    """
+
+    comparison: ClassComparison
+    depends_on: list[str] = field(default_factory=list)

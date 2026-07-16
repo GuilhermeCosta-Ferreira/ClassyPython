@@ -10,8 +10,9 @@ from classpy.adapters.code.inspector import CodeInspector
 from classpy.adapters.puml.parser import PumlParser
 from classpy.adapters.puml.writer import PumlWriter
 from classpy.domain.comparison import StatusComparator
+from classpy.domain.dependency import DependencyOrderer
 from classpy.domain.locator import ClassLocator
-from classpy.domain.models import ClassComparison, ImplementationStatus
+from classpy.domain.models import ClassComparison, ImplementationStatus, OrderedClass
 
 
 @dataclass
@@ -41,6 +42,19 @@ class SyncReport:
         return {status: tally.get(status, 0) for status in ImplementationStatus}
 
 
+@dataclass
+class PendingReport:
+    """Unimplemented classes, ordered least-dependent first for building."""
+
+    ordered: list[OrderedClass] = field(default_factory=list)
+    include_partial: bool = False
+
+    @property
+    def is_empty(self) -> bool:
+        """True when there is nothing left to implement."""
+        return not self.ordered
+
+
 class SyncService:
     """Wire the parser, inspector, comparator, locator and writer together."""
 
@@ -51,12 +65,14 @@ class SyncService:
         comparator: StatusComparator | None = None,
         locator: ClassLocator | None = None,
         writer: PumlWriter | None = None,
+        orderer: DependencyOrderer | None = None,
     ) -> None:
         self.parser = parser or PumlParser()
         self.inspector = inspector or CodeInspector()
         self.comparator = comparator or StatusComparator()
         self.locator = locator or ClassLocator()
         self.writer = writer or PumlWriter()
+        self.orderer = orderer or DependencyOrderer()
 
     def status(self, puml_path: str | Path, source_root: str | Path) -> SyncReport:
         """Compute each class's status without modifying the diagram."""
@@ -75,3 +91,24 @@ class SyncService:
         if report.is_stale:
             self.writer.write_file(puml_path, report.comparisons)
         return report
+
+    def pending(
+        self,
+        puml_path: str | Path,
+        source_root: str | Path,
+        include_partial: bool = False,
+    ) -> PendingReport:
+        """List unimplemented classes in build order (least-dependent first).
+
+        ``planned`` classes are always included; ``partial`` classes only when
+        ``include_partial`` is true. ``external`` classes are never listed.
+        """
+        report = self.status(puml_path, source_root)
+        wanted = {ImplementationStatus.PLANNED}
+        if include_partial:
+            wanted.add(ImplementationStatus.PARTIAL)
+
+        pending = [c for c in report.comparisons if c.status in wanted]
+        relationships = self.parser.parse_relationships_file(puml_path)
+        ordered = self.orderer.order(pending, relationships)
+        return PendingReport(ordered=ordered, include_partial=include_partial)

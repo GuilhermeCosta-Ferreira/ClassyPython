@@ -6,7 +6,7 @@ import typer
 
 from classpy.adapters.config.loader import ConfigLoader
 from classpy.domain.models import ImplementationStatus
-from classpy.services.sync_service import SyncReport, SyncService
+from classpy.services.sync_service import PendingReport, SyncReport, SyncService
 
 DEFAULT_PUML = "docs/class.puml"
 DEFAULT_SRC = "src"
@@ -79,6 +79,21 @@ class Cli:
         report = self.service.sync(puml, src)
         _render(report, wrote=True)
 
+    def todo(
+        self,
+        puml: str | None = _PUML_OPTION,
+        src: str | None = _SRC_OPTION,
+        partial: bool = typer.Option(
+            False,
+            "--partial",
+            help="Also list partially-implemented classes (default: only planned).",
+        ),
+    ) -> None:
+        """List unimplemented classes in build order, least-dependent first."""
+        puml, src = self._resolve(puml, src)
+        report = self.service.pending(puml, src, include_partial=partial)
+        _render_pending(report)
+
 
 def _render(report: SyncReport, wrote: bool) -> None:
     changed = {id(c) for c in report.changed}
@@ -110,6 +125,30 @@ def _render(report: SyncReport, wrote: bool) -> None:
         typer.echo("Diagram already up to date.")
 
 
+def _render_pending(report: PendingReport) -> None:
+    if report.is_empty:
+        scope = "planned or partial" if report.include_partial else "planned"
+        typer.echo(f"Nothing to implement — no {scope} classes.")
+        return
+
+    typer.echo("Build order (least-dependent first):")
+    typer.echo("")
+    width = len(str(len(report.ordered)))
+    for index, item in enumerate(report.ordered, start=1):
+        comparison = item.comparison
+        label, colour = _LABELS[comparison.status]
+        badge = typer.style(f"[{label}]", fg=colour)
+        line = f" {index:>{width}}. {badge} {comparison.uml_class.name}"
+        if item.depends_on:
+            line += typer.style(
+                f"  (needs {', '.join(item.depends_on)})", fg="bright_black"
+            )
+        typer.echo(line)
+
+    typer.echo("")
+    typer.echo(f"{len(report.ordered)} class(es) to implement.")
+
+
 def build_app() -> typer.Typer:
     """Construct the Typer application with its commands registered."""
     app = typer.Typer(
@@ -120,6 +159,7 @@ def build_app() -> typer.Typer:
     cli = Cli()
     app.command()(cli.status)
     app.command()(cli.sync)
+    app.command()(cli.todo)
     return app
 
 

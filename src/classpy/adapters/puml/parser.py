@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from classpy.domain.models import MemberKind, UmlClass, UmlMember
+from classpy.domain.models import MemberKind, UmlClass, UmlMember, UmlRelationship
 
 _PACKAGE_RE = re.compile(r'^\s*package\s+(?:"([^"]*)"|(\S+))\s*\{\s*$')
 _CLASS_RE = re.compile(
@@ -21,6 +21,22 @@ _CLASS_RE = re.compile(
 _VISIBILITY = "+-#~"
 _MODIFIERS = ("{static}", "{abstract}", "{field}", "{method}")
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_]\w*$")
+
+# A relationship line: <lhs> <connector> <rhs> [: label]. The connector is a
+# run of dashes/dots (the line) with optional single arrowheads on either end
+# (``>`` ``|>`` ``<`` ``<|`` ``*`` ``o``). Optional "..." multiplicities and a
+# trailing ``: label`` are tolerated and ignored.
+_RELATION_RE = re.compile(
+    r"""^\s*
+        (?P<src>\w+)
+        \s*(?:"[^"]*")?\s*
+        (?P<arrow>(?:<\||<|\*|o)?[-.]+(?:\|>|>|\*|o)?)
+        \s*(?:"[^"]*")?\s*
+        (?P<dst>\w+)
+        \s*(?::.*)?$
+    """,
+    re.VERBOSE,
+)
 
 
 class PumlParser:
@@ -71,6 +87,40 @@ class PumlParser:
                 package_stack.pop()
 
         return classes
+
+    def parse_relationships_file(self, path: str | Path) -> list[UmlRelationship]:
+        """Parse the relationships declared in the diagram stored at ``path``."""
+        return self.parse_relationships(Path(path).read_text(encoding="utf-8"))
+
+    def parse_relationships(self, text: str) -> list[UmlRelationship]:
+        """Extract directed dependencies from diagram ``text``.
+
+        Each returned :class:`UmlRelationship` points ``source`` -> ``target``,
+        meaning *source depends on target*. Arrowhead direction is normalised:
+        a left head (``<``/``<|``) or a left-side ``*``/``o`` owner flips the
+        edge so the dependent class is always ``source``. Lines that are class
+        or package declarations are skipped.
+        """
+        relationships: list[UmlRelationship] = []
+        for raw_line in text.splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith(("'", "!")):
+                continue
+            if _CLASS_RE.match(raw_line) or _PACKAGE_RE.match(raw_line):
+                continue
+            match = _RELATION_RE.match(raw_line)
+            if match is None:
+                continue
+            src, dst = match.group("src"), match.group("dst")
+            arrow = match.group("arrow")
+            # Normalise so `source` is the dependent side. A left arrowhead
+            # (`<`/`<|`) or a right-side composition/aggregation owner (`*`/`o`)
+            # means the real dependent is on the right, so flip the edge.
+            if arrow[0] == "<" or arrow[-1] in "*o":
+                src, dst = dst, src
+            if src != dst:
+                relationships.append(UmlRelationship(source=src, target=dst))
+        return relationships
 
     @staticmethod
     def _is_block_close(line: str) -> bool:
