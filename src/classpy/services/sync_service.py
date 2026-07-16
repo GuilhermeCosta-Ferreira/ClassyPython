@@ -10,10 +10,16 @@ from classpy.adapters.code.inspector import CodeInspector
 from classpy.adapters.puml.parser import PumlParser
 from classpy.adapters.puml.scaffold import PumlScaffold
 from classpy.adapters.puml.writer import PumlWriter
+from classpy.domain.balance import BalanceCalculator, SortMode
 from classpy.domain.comparison import StatusComparator
 from classpy.domain.dependency import DependencyOrderer
 from classpy.domain.locator import ClassLocator
-from classpy.domain.models import ClassComparison, ImplementationStatus, OrderedClass
+from classpy.domain.models import (
+    BalanceEntry,
+    ClassComparison,
+    ImplementationStatus,
+    OrderedClass,
+)
 
 
 @dataclass
@@ -56,6 +62,20 @@ class PendingReport:
         return not self.ordered
 
 
+@dataclass
+class BalanceReport:
+    """Per-class member-count balance between the UML and the code."""
+
+    entries: list[BalanceEntry] = field(default_factory=list)
+    count_private: bool = False
+    sort: SortMode = SortMode.ABS
+
+    @property
+    def is_empty(self) -> bool:
+        """True when no class was in scope to balance."""
+        return not self.entries
+
+
 class SyncService:
     """Wire the parser, inspector, comparator, locator and writer together."""
 
@@ -68,6 +88,7 @@ class SyncService:
         writer: PumlWriter | None = None,
         orderer: DependencyOrderer | None = None,
         scaffold: PumlScaffold | None = None,
+        balancer: BalanceCalculator | None = None,
     ) -> None:
         self.parser = parser or PumlParser()
         self.inspector = inspector or CodeInspector()
@@ -76,6 +97,7 @@ class SyncService:
         self.writer = writer or PumlWriter()
         self.orderer = orderer or DependencyOrderer()
         self.scaffold = scaffold or PumlScaffold()
+        self.balancer = balancer or BalanceCalculator()
 
     def init(self, puml_path: str | Path) -> bool:
         """Scaffold an empty diagram at ``puml_path`` (creating parent folders).
@@ -123,3 +145,28 @@ class SyncService:
         relationships = self.parser.parse_relationships_file(puml_path)
         ordered = self.orderer.order(pending, relationships)
         return PendingReport(ordered=ordered, include_partial=include_partial)
+
+    def balance(
+        self,
+        puml_path: str | Path,
+        source_root: str | Path,
+        count_private: bool = False,
+        sort: SortMode = SortMode.ABS,
+    ) -> BalanceReport:
+        """Compare declared vs. implemented member counts for each class.
+
+        ``external`` classes are skipped (the tool never inspects them). Private
+        (underscore-prefixed) code members are excluded unless ``count_private``.
+        """
+        uml_classes = self.parser.parse_file(puml_path)
+        code_classes = self.inspector.inspect(source_root)
+
+        pairs = [
+            (uml, self.locator.select(uml, code_classes))
+            for uml in uml_classes
+            if uml.stereotype != ImplementationStatus.EXTERNAL.stereotype
+        ]
+        entries = self.balancer.calculate(pairs, count_private, sort)
+        return BalanceReport(
+            entries=entries, count_private=count_private, sort=sort
+        )

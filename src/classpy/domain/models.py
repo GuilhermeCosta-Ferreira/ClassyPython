@@ -97,6 +97,25 @@ class ClassComparison:
     missing_members: list[UmlMember] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class BalanceEntry:
+    """Member-count balance for one class: UML-declared vs. code-implemented.
+
+    ``diff`` is ``uml_count - code_count``: positive means the UML declares more
+    members than the code implements (unbuilt surface), negative means the code
+    carries members the UML never declared (undocumented surface).
+    """
+
+    name: str
+    uml_count: int
+    code_count: int
+
+    @property
+    def diff(self) -> int:
+        """UML-declared minus code-implemented member count."""
+        return self.uml_count - self.code_count
+
+
 @dataclass
 class OrderedClass:
     """A pending class placed in build order, with its unbuilt dependencies.

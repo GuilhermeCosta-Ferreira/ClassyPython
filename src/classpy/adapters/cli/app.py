@@ -5,8 +5,14 @@ from __future__ import annotations
 import typer
 
 from classpy.adapters.config.loader import ConfigLoader
+from classpy.domain.balance import SortMode
 from classpy.domain.models import ImplementationStatus
-from classpy.services.sync_service import PendingReport, SyncReport, SyncService
+from classpy.services.sync_service import (
+    BalanceReport,
+    PendingReport,
+    SyncReport,
+    SyncService,
+)
 
 DEFAULT_PUML = "docs/class.puml"
 DEFAULT_SRC = "src"
@@ -107,6 +113,27 @@ class Cli:
         report = self.service.pending(puml, src, include_partial=partial)
         _render_pending(report)
 
+    def balance(
+        self,
+        puml: str | None = _PUML_OPTION,
+        src: str | None = _SRC_OPTION,
+        count_private: bool = typer.Option(
+            False,
+            "--private",
+            "--count-private",
+            help="Count underscore-prefixed private members on the code side.",
+        ),
+        sort: SortMode = typer.Option(
+            SortMode.ABS.value,
+            "--sort",
+            help="Row order: 'abs' (biggest gap first) or 'signed' (UML>code first).",
+        ),
+    ) -> None:
+        """Chart each class's UML-declared vs. code-implemented member balance."""
+        puml, src = self._resolve(puml, src)
+        report = self.service.balance(puml, src, count_private, sort)
+        _render_balance(report)
+
 
 def _render(report: SyncReport, wrote: bool) -> None:
     changed = {id(c) for c in report.changed}
@@ -162,6 +189,63 @@ def _render_pending(report: PendingReport) -> None:
     typer.echo(f"{len(report.ordered)} class(es) to implement.")
 
 
+_NAME_WIDTH = 22
+_HALF = 20
+_CENTER = _NAME_WIDTH + _HALF
+
+
+def _axis_line() -> str:
+    """A full-width rule with the ``┼`` sitting on the centre column."""
+    chars = ["─"] * (_NAME_WIDTH + _HALF + 1 + _HALF)
+    chars[_CENTER] = "┼"
+    return "".join(chars)
+
+
+def _balance_row(name: str, diff: int, span: int) -> str:
+    """One class row: left/right bar around the centre line, label on the right."""
+    label = name[: _NAME_WIDTH - 1] + "…" if len(name) > _NAME_WIDTH else name
+    prefix = f"{label:<{_NAME_WIDTH}}"
+
+    if diff == 0:
+        left = " " * (_HALF - 1) + "─"
+        right = "─" + " " * (_HALF - 1)
+        return f"{prefix}{left}┼{right}  " + typer.style("even", fg="bright_black")
+
+    bar_len = max(1, round(abs(diff) / span * _HALF)) if span else 0
+    bar = "█" * bar_len
+    if diff > 0:
+        cell = f"{prefix}{bar.rjust(_HALF)}│{' ' * _HALF}  "
+        return cell + typer.style(f"UML +{diff}", fg="red")
+    cell = f"{prefix}{' ' * _HALF}│{bar.ljust(_HALF)}  "
+    return cell + typer.style(f"code {diff}", fg="green")
+
+
+def _render_balance(report: BalanceReport) -> None:
+    if report.is_empty:
+        typer.echo("No classes to balance.")
+        return
+
+    private = "included" if report.count_private else "excluded"
+    header = " " * (_CENTER - 7) + "UML ◄──┼──► code"
+    typer.echo("classpy balance — UML vs. code member counts")
+    typer.echo(
+        f"private methods (_name): {private}          sort: {report.sort.value}"
+    )
+    typer.echo("")
+    typer.echo(header)
+    typer.echo(_axis_line())
+
+    span = max((abs(e.diff) for e in report.entries), default=0)
+    for entry in report.entries:
+        typer.echo(_balance_row(entry.name, entry.diff, span))
+
+    typer.echo(_axis_line())
+    typer.echo(header)
+    typer.echo("")
+    typer.echo("left  = UML declares more than the code implements (unbuilt)")
+    typer.echo("right = code implements more than the UML declares (undocumented)")
+
+
 def build_app() -> typer.Typer:
     """Construct the Typer application with its commands registered."""
     app = typer.Typer(
@@ -174,6 +258,7 @@ def build_app() -> typer.Typer:
     app.command()(cli.status)
     app.command()(cli.sync)
     app.command()(cli.todo)
+    app.command()(cli.balance)
     return app
 
 
