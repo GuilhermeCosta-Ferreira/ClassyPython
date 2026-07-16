@@ -132,6 +132,51 @@ def test_todo_partial_flag_widens_the_scope(tmp_path):
     assert "Done" in result.output and "Missing" in result.output
 
 
+def test_balance_command_charts_each_class(tmp_path):
+    puml, src = _project(tmp_path)
+    result = runner.invoke(
+        build_app(), ["balance", "--puml", str(puml), "--src", str(src)]
+    )
+    assert result.exit_code == 0
+    assert "UML" in result.output and "code" in result.output
+    # Done is even (run declared and implemented); Missing has no code -> UML +1.
+    assert "Done" in result.output
+    assert "Missing" in result.output
+    assert "UML +1" in result.output
+
+
+def test_balance_private_flag_changes_the_code_count(tmp_path):
+    puml, src = _project(tmp_path)
+    (src / "done.py").write_text(
+        "class Done:\n"
+        "    def run(self):\n        return 1\n"
+        "    def _helper(self):\n        return 2\n",
+        encoding="utf-8",
+    )
+    default = runner.invoke(
+        build_app(), ["balance", "--puml", str(puml), "--src", str(src)]
+    )
+    withpriv = runner.invoke(
+        build_app(),
+        ["balance", "--private", "--puml", str(puml), "--src", str(src)],
+    )
+    assert default.exit_code == 0 and withpriv.exit_code == 0
+    # Default: _helper ignored -> Done even. With --private: code has one extra.
+    assert "included" in withpriv.output
+    assert "excluded" in default.output
+    assert "code -1" in withpriv.output
+
+
+def test_balance_sort_flag_accepts_signed(tmp_path):
+    puml, src = _project(tmp_path)
+    result = runner.invoke(
+        build_app(),
+        ["balance", "--sort", "signed", "--puml", str(puml), "--src", str(src)],
+    )
+    assert result.exit_code == 0
+    assert "sort: signed" in result.output
+
+
 def test_cli_flags_override_pyproject_config(tmp_path, monkeypatch):
     puml, src = _project(tmp_path)
     (tmp_path / "pyproject.toml").write_text(

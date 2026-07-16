@@ -3,6 +3,7 @@
 from textwrap import dedent
 
 from classpy.adapters.puml.parser import PumlParser
+from classpy.domain.balance import SortMode
 from classpy.domain.models import ImplementationStatus
 from classpy.services.sync_service import SyncService
 
@@ -114,3 +115,42 @@ def test_pending_includes_partial_when_requested(tmp_path):
     assert _pending_names(report) == ["Half", "Missing"]
     by_name = {o.comparison.uml_class.name: o for o in report.ordered}
     assert by_name["Missing"].depends_on == ["Half"]
+
+
+def test_balance_counts_and_skips_external(tmp_path):
+    puml, src = _make_project(tmp_path)
+    report = SyncService().balance(puml, src)
+    by_name = {e.name: e for e in report.entries}
+    # numpy is external -> never balanced.
+    assert "numpy" not in by_name
+    # Done declares run(); code has run() -> even.
+    assert by_name["Done"].diff == 0
+    # Half declares run()+stop(); code only has run() -> UML +1.
+    assert by_name["Half"].diff == 1
+    # Missing has no code class -> code_count 0, UML +1.
+    assert by_name["Missing"].code_count == 0
+
+
+def test_balance_private_toggle_reaches_the_code_inspector(tmp_path):
+    puml, src = _make_project(tmp_path)
+    (src / "pkg" / "done.py").write_text(
+        "class Done:\n"
+        "    def run(self):\n        return 1\n"
+        "    def _helper(self):\n        return 2\n",
+        encoding="utf-8",
+    )
+    default = {e.name: e for e in SyncService().balance(puml, src).entries}
+    withpriv = {
+        e.name: e
+        for e in SyncService().balance(puml, src, count_private=True).entries
+    }
+    assert default["Done"].code_count == 1  # _helper excluded
+    assert withpriv["Done"].code_count == 2  # _helper counted
+
+
+def test_balance_sort_mode_is_threaded_through(tmp_path):
+    puml, src = _make_project(tmp_path)
+    report = SyncService().balance(puml, src, sort=SortMode.SIGNED)
+    assert report.sort is SortMode.SIGNED
+    diffs = [e.diff for e in report.entries]
+    assert diffs == sorted(diffs, reverse=True)
