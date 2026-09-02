@@ -57,6 +57,22 @@ def test_ties_broken_by_name_for_stable_output():
     assert _order(pending, []) == ["Alpha", "Mike", "Zulu"]
 
 
+def test_dependency_through_out_of_scope_class_is_preserved():
+    # ArchiveStrategy ..|> DownloadStrategy (partial, out of scope) ..> Spec.
+    # Collapsing the out-of-scope interface must keep ArchiveStrategy behind
+    # Spec, not treat it as a leaf that can be built first.
+    pending = _pending("ArchiveStrategy", "Spec")
+    rels = [
+        UmlRelationship("ArchiveStrategy", "DownloadStrategy"),
+        UmlRelationship("DownloadStrategy", "Spec"),
+    ]
+    ordered = DependencyOrderer().order(pending, rels)
+    names = [o.comparison.uml_class.name for o in ordered]
+    assert names == ["Spec", "ArchiveStrategy"]
+    by_name = {o.comparison.uml_class.name: o for o in ordered}
+    assert by_name["ArchiveStrategy"].depends_on == ["Spec"]
+
+
 def test_cycle_is_broken_not_dropped():
     pending = _pending("X", "Y")
     rels = [UmlRelationship("X", "Y"), UmlRelationship("Y", "X")]
